@@ -1455,11 +1455,18 @@
   });
 
   let wheelLock = false;
+  let wheelUnlockTimer = null;
   document.addEventListener('wheel', (e) => {
-    if (wheelLock) return;
+    if (wheelLock) {
+      // 惯性滚动还在持续：不断顺延解锁，直到滚动事件真正停下
+      clearTimeout(wheelUnlockTimer);
+      wheelUnlockTimer = setTimeout(() => { wheelLock = false; }, 220);
+      return;
+    }
+    if (Math.abs(e.deltaY) < 24) return; // 过滤触控板微小抖动
     wheelLock = true;
     e.deltaY > 0 ? nextSlide() : prevSlide();
-    setTimeout(() => wheelLock = false, 800);
+    wheelUnlockTimer = setTimeout(() => { wheelLock = false; }, 1000);
   }, { passive: true });
 
   // ===== ANIMATION TRIGGERS =====
