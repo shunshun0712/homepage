@@ -1525,19 +1525,32 @@
     }
   });
 
+  // 滚轮翻页：一次手势翻一屏；微小惯性尾巴不续锁；硬上限兜底，绝不卡死
   let wheelLock = false;
-  let wheelUnlockTimer = null;
+  let wheelIdleTimer = null;
+  let wheelHardTimer = null;
+  const WHEEL_THRESH = 24;   // 有效滚动阈值
+  const WHEEL_IDLE = 200;    // 手势安静 200ms 后即可再翻
+  const WHEEL_HARD = 1000;   // 无论事件是否断流，1000ms 后必可再翻
+  function unlockWheel() {
+    wheelLock = false;
+    clearTimeout(wheelIdleTimer); wheelIdleTimer = null;
+    clearTimeout(wheelHardTimer); wheelHardTimer = null;
+  }
   document.addEventListener('wheel', (e) => {
     if (wheelLock) {
-      // 惯性滚动还在持续：不断顺延解锁，直到滚动事件真正停下
-      clearTimeout(wheelUnlockTimer);
-      wheelUnlockTimer = setTimeout(() => { wheelLock = false; }, 220);
+      // 只有「还在明显滚动」才顺延解锁；微小惯性尾巴不再续锁
+      if (Math.abs(e.deltaY) >= WHEEL_THRESH) {
+        clearTimeout(wheelIdleTimer);
+        wheelIdleTimer = setTimeout(unlockWheel, WHEEL_IDLE);
+      }
       return;
     }
-    if (Math.abs(e.deltaY) < 24) return; // 过滤触控板微小抖动
+    if (Math.abs(e.deltaY) < WHEEL_THRESH) return; // 过滤触控板微小抖动
     wheelLock = true;
     e.deltaY > 0 ? nextSlide() : prevSlide();
-    wheelUnlockTimer = setTimeout(() => { wheelLock = false; }, 1150);
+    wheelIdleTimer = setTimeout(unlockWheel, WHEEL_IDLE);
+    wheelHardTimer = setTimeout(unlockWheel, WHEEL_HARD);
   }, { passive: true });
 
   // ===== ANIMATION TRIGGERS =====
