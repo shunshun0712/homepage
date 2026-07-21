@@ -684,7 +684,10 @@
       border-radius: 14px 14px 6px 6px;
       background: linear-gradient(180deg, var(--sakura) 0%, var(--sakura-deep) 100%);
       box-shadow: 0 6px 14px rgba(217, 79, 122, 0.25);
-      transition: height 1s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-origin: bottom center;
+      transform: scaleY(0);
+      transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      height: 100%;
     }
 
     .chart-bar.alt { background: linear-gradient(180deg, var(--lavender) 0%, #A78BDB 100%); box-shadow: 0 6px 14px rgba(167, 139, 219, 0.3); }
@@ -1091,6 +1094,46 @@
     .timeline-text p { font-size: 0.78rem; line-height: 1.5; }
     .timeline-text .date { margin-bottom: 4px; padding: 2px 10px; }
 
+    /* === MOBILE: 长页面滚动模式 === */
+    @media (max-width: 860px) {
+      html, body {
+        overflow: auto !important;
+        height: auto !important;
+      }
+      .deck {
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .slides-container {
+        transform: none !important;
+        transition: none !important;
+        height: auto !important;
+      }
+      .slide {
+        height: auto !important;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow: visible !important;
+      }
+      .slide-body {
+        height: auto !important;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow-y: visible !important;
+        transform: none !important;
+        opacity: 1 !important;
+        transition: none !important;
+      }
+      .slide-body > .rv {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+      .nav-dots { display: none !important; }
+      .nav-hint { display: none !important; }
+      .slide-counter { display: none !important; }
+    }
+
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       .slides-container { transition: none; }
@@ -1206,27 +1249,27 @@
             <div class="kawaii-bar-chart" id="barChart">
               <div class="chart-bar-group">
                 <div class="chart-value" data-value="249.9">0</div>
-                <div class="bar-track"><div class="chart-bar" data-height="95" style="height: 0%;"></div></div>
+                <div class="bar-track"><div class="chart-bar" data-height="95"></div></div>
                 <div class="chart-bar-label">B 站粉丝（万）</div>
               </div>
               <div class="chart-bar-group">
                 <div class="chart-value" data-value="639">0</div>
-                <div class="bar-track"><div class="chart-bar alt" data-height="86" style="height: 0%;"></div></div>
+                <div class="bar-track"><div class="chart-bar alt" data-height="86"></div></div>
                 <div class="chart-bar-label">大航海（人）</div>
               </div>
               <div class="chart-bar-group">
                 <div class="chart-value" data-value="2.1" data-suffix="+">0</div>
-                <div class="bar-track"><div class="chart-bar alt2" data-height="40" style="height: 0%;"></div></div>
+                <div class="bar-track"><div class="chart-bar alt2" data-height="40"></div></div>
                 <div class="chart-bar-label">充电人数（万）</div>
               </div>
               <div class="chart-bar-group">
                 <div class="chart-value" data-value="200" data-suffix="+">0</div>
-                <div class="bar-track"><div class="chart-bar" data-height="68" style="height: 0%;"></div></div>
+                <div class="bar-track"><div class="chart-bar" data-height="68"></div></div>
                 <div class="chart-bar-label">投稿视频</div>
               </div>
               <div class="chart-bar-group">
                 <div class="chart-value" data-value="800" data-suffix="+">0</div>
-                <div class="bar-track"><div class="chart-bar alt" data-height="98" style="height: 0%;"></div></div>
+                <div class="bar-track"><div class="chart-bar alt" data-height="98"></div></div>
                 <div class="chart-bar-label">直播场次</div>
               </div>
             </div>
@@ -1527,7 +1570,9 @@
   const dots = document.querySelectorAll('.nav-dot');
 
   function updateUI() {
-    container.style.transform = `translate3d(0, calc(-${currentSlide * 100} * var(--vh)), 0)`;
+    if (!isMobileLayout()) {
+      container.style.transform = `translate3d(0, calc(-${currentSlide * 100} * var(--vh)), 0)`;
+    }
     counter.textContent = String(currentSlide + 1).padStart(2, '0') + ' / ' + totalSlides;
     dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
     setSlideStates();
@@ -1560,13 +1605,18 @@
     }
   });
 
+  // 移动端检测：小屏时使用原生滚动，禁用触摸翻页
+  const isMobileLayout = () => window.matchMedia('(max-width: 860px)').matches;
+
   let touchStartY = 0;
   let touchStartTime = 0;
   document.addEventListener('touchstart', (e) => {
+    if (isMobileLayout()) return;
     touchStartY = e.touches[0].clientY;
     touchStartTime = Date.now();
   }, { passive: true });
   document.addEventListener('touchend', (e) => {
+    if (isMobileLayout()) return;
     const diff = touchStartY - e.changedTouches[0].clientY;
     const elapsed = Date.now() - touchStartTime;
     if (Math.abs(diff) > 40 || (Math.abs(diff) > 20 && elapsed < 300)) {
@@ -1587,6 +1637,7 @@
     clearTimeout(wheelHardTimer); wheelHardTimer = null;
   }
   document.addEventListener('wheel', (e) => {
+    if (isMobileLayout()) return;
     if (wheelLock) {
       // 只有「还在明显滚动」才顺延解锁；微小惯性尾巴不再续锁
       if (Math.abs(e.deltaY) >= WHEEL_THRESH) {
@@ -1605,18 +1656,21 @@
   // ===== ANIMATION TRIGGERS =====
   function triggerAnimations(slideIndex) {
     if (slideIndex === 3) {
-      document.querySelectorAll('#barChart .chart-bar').forEach((bar, i) => {
-        const h = bar.dataset.height;
-        setTimeout(() => { bar.style.height = h + '%'; }, i * 120);
-      });
-      document.querySelectorAll('#barChart .chart-value').forEach((val, i) => {
-        const target = parseFloat(val.dataset.value);
-        const suffix = val.dataset.suffix || '';
-        const isFloat = target % 1 !== 0;
-        setTimeout(() => animateNumber(val, target, suffix, 800, isFloat), i * 120);
-      });
+      if (!window._barAnimDone) {
+        window._barAnimDone = true;
+        document.querySelectorAll('#barChart .chart-bar').forEach((bar, i) => {
+          const h = bar.dataset.height;
+          setTimeout(() => { bar.style.transform = 'scaleY(' + (h / 100) + ')'; }, i * 120);
+        });
+        document.querySelectorAll('#barChart .chart-value').forEach((val, i) => {
+          const target = parseFloat(val.dataset.value);
+          const suffix = val.dataset.suffix || '';
+          const isFloat = target % 1 !== 0;
+          setTimeout(() => animateNumber(val, target, suffix, 800, isFloat), i * 120);
+        });
+      }
     } else {
-      document.querySelectorAll('#barChart .chart-bar').forEach(bar => bar.style.height = '0%');
+      // 离开 slide 4 时不重置，避免回看时抖动
     }
 
     if (slideIndex === 4) {
@@ -1705,6 +1759,24 @@
   generateFloaties('floaties8', ['♡', '🍀', '✦'], 10);
   generateFloaties('floaties10', ['❤', '🔍', '⚙️', '🍀'], 16);
 
+  // 移动端：触发所有动画（因为所有 slide 同时可见）
+  if (isMobileLayout()) {
+    // 触发 slide 4 柱状图
+    window._barAnimDone = false;
+    triggerAnimations(3);
+    // 触发 slide 5 横条图
+    document.querySelectorAll('#hbarChart .hbar-fill').forEach((fill, i) => {
+      const w = fill.dataset.width;
+      setTimeout(() => { fill.style.width = w + '%'; }, i * 100);
+    });
+    // 触发 slide 7 统计数字
+    document.querySelectorAll('#statsGrid .stat-number').forEach((el, i) => {
+      const target = parseFloat(el.dataset.target);
+      const suffix = el.dataset.suffix || '';
+      const isFloat = target % 1 !== 0;
+      setTimeout(() => animateNumber(el, target, suffix, 1200, isFloat), i * 150);
+    });
+  }
   updateUI();
 })();
 </script>
